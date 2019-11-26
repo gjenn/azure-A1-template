@@ -37,8 +37,8 @@
       "allowedValues": [
         "12.04.5-LTS",
         "14.04.5-LTS",
-        "16.04.0-LTS",
-        "18.04-LTS"
+        "15.10",
+        "16.04.0-LTS"
       ],
       "metadata": {
         "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version."
@@ -64,7 +64,7 @@
     "publicIPAddressName": "myPublicIP",
     "publicIPAddressType": "Dynamic",
     "vmName": "MyUbuntuVM",
-    "vmSize": "Standard_A1_v2",
+    "vmSize": "Standard_A1",
     "virtualNetworkName": "MyVNET",
     "linuxConfiguration": {
       "disablePasswordAuthentication": true,
@@ -77,14 +77,36 @@
         ]
       }
     },
-    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
-    "networkSecurityGroupName": "default-NSG"
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]"
   },
   "resources": [
     {
+      "name": "[concat(variables('vmName'),'/', 'ConfigureNginx')]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2018-06-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "customScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/MicrosoftDocs/mslearn-welcome-to-azure/master/configure-nginx.sh"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "./configure-nginx.sh"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+      ]
+    },
+    {
       "type": "Microsoft.Storage/storageAccounts",
-      "apiVersion": "2018-11-01",
       "name": "[variables('storageAccountName')]",
+      "apiVersion": "2018-07-01",
       "location": "[parameters('location')]",
       "sku": {
         "name": "[variables('storageAccountType')]"
@@ -93,8 +115,8 @@
       "properties": {}
     },
     {
+      "apiVersion": "2018-10-01",
       "type": "Microsoft.Network/publicIPAddresses",
-      "apiVersion": "2018-11-01",
       "name": "[variables('publicIPAddressName')]",
       "location": "[parameters('location')]",
       "properties": {
@@ -105,37 +127,10 @@
       }
     },
     {
-      "comments": "Default Network Security Group for template",
-      "type": "Microsoft.Network/networkSecurityGroups",
-      "apiVersion": "2019-08-01",
-      "name": "[variables('networkSecurityGroupName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "securityRules": [
-          {
-            "name": "default-allow-22",
-            "properties": {
-              "priority": 1000,
-              "access": "Allow",
-              "direction": "Inbound",
-              "destinationPortRange": "22",
-              "protocol": "TCP",
-              "sourceAddressPrefix": "*",
-              "sourcePortRange": "*",
-              "destinationAddressPrefix": "*"
-            }
-          }
-        ]
-      }
-    },
-    {
+      "apiVersion": "2018-10-01",
       "type": "Microsoft.Network/virtualNetworks",
-      "apiVersion": "2018-11-01",
       "name": "[variables('virtualNetworkName')]",
       "location": "[parameters('location')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-      ],
       "properties": {
         "addressSpace": {
           "addressPrefixes": [
@@ -146,18 +141,15 @@
           {
             "name": "[variables('subnetName')]",
             "properties": {
-              "addressPrefix": "[variables('subnetPrefix')]",
-              "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-              }
+              "addressPrefix": "[variables('subnetPrefix')]"
             }
           }
         ]
       }
     },
     {
+      "apiVersion": "2018-10-01",
       "type": "Microsoft.Network/networkInterfaces",
-      "apiVersion": "2018-11-01",
       "name": "[variables('nicName')]",
       "location": "[parameters('location')]",
       "dependsOn": [
@@ -182,8 +174,8 @@
       }
     },
     {
-      "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2018-10-01",
+      "type": "Microsoft.Compute/virtualMachines",
       "name": "[variables('vmName')]",
       "location": "[parameters('location')]",
       "dependsOn": [
